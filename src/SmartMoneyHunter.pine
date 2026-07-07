@@ -65,6 +65,99 @@ moneyFlowRatio =
     ? moneyFlow / averageMoneyFlow
     : 0.0
 
+
+//=====================================================
+// SMART MONEY ENGINE
+//=====================================================
+
+// Candle Metrics
+body = math.abs(close - open)
+candleRange = high - low
+
+bodyRatio = candleRange > 0 ? body / candleRange : 0.0
+
+upperWick = high - math.max(open, close)
+lowerWick = math.min(open, close) - low
+
+// Average
+avgBody = ta.sma(body, 20)
+avgRange = ta.sma(candleRange, 20)
+
+// Conditions
+highRVOL = rvol >= 2.0
+
+highMoney = moneyFlowRatio >= 1.5
+
+smallBody = body < avgBody
+
+tightRange = candleRange < avgRange
+
+strongClose = candleRange > 0 ? close >= low + candleRange * 0.70 : false
+
+longLowerWick = lowerWick > body
+
+// Smart Money Conditions
+absorption =
+    highRVOL and
+    highMoney and
+    smallBody and
+    strongClose
+
+accumulation =
+    absorption and
+    tightRange
+
+breakoutReady =
+    accumulation and
+    aboveVWAP and
+    trendBull
+
+
+//=====================================================
+// SMART SCORE
+//=====================================================
+
+smartScore = 0.0
+
+smartScore += highRVOL ? 20 : 0
+smartScore += highMoney ? 20 : 0
+smartScore += smallBody ? 15 : 0
+smartScore += strongClose ? 15 : 0
+smartScore += tightRange ? 10 : 0
+smartScore += aboveVWAP ? 10 : 0
+smartScore += trendBull ? 10 : 0
+
+//=====================================================
+// STATUS
+//=====================================================
+
+string smartStatus = "NO SIGNAL"
+
+if breakoutReady
+    smartStatus := "BREAKOUT READY"
+else if accumulation
+    smartStatus := "EARLY ACCUMULATION"
+else if absorption
+    smartStatus := "ABSORPTION"
+
+
+plotshape(
+     accumulation,
+     title="Accumulation",
+     style=shape.circle,
+     color=color.yellow,
+     size=size.tiny,
+     location=location.belowbar)
+
+plotshape(
+     breakoutReady,
+     title="Breakout Ready",
+     style=shape.triangleup,
+     color=color.lime,
+     size=size.small,
+     location=location.belowbar)
+
+
 //=====================================================
 // PLOT INFO
 //=====================================================
@@ -86,12 +179,12 @@ if barstate.islast
     label.delete(info)
 
     txt =
-         "Trend : " +
-         (trendBull ? "Bullish" : "Bearish") +
-         "\nRVOL : " +
-         str.tostring(rvol,"#.##") +
-         "\nMoney : " +
-         str.tostring(moneyFlowRatio,"#.##")
+         txt =
+     "Trend : " + (trendBull ? "Bullish" : "Bearish") +
+     "\nRVOL : " + str.tostring(rvol, "#.##") +
+     "\nMoney : " + str.tostring(moneyFlowRatio, "#.##") +
+     "\nScore : " + str.tostring(smartScore, "#") +
+     "\nStatus : " + smartStatus
 
     info :=
          label.new(
