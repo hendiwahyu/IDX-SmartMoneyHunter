@@ -1,0 +1,103 @@
+//@version=5
+indicator("IDX Smart Money Hunter PRO", shorttitle="SMH PRO", overlay=true)
+
+//=====================================================
+// INPUT
+//=====================================================
+groupTrend = "Trend"
+
+emaFastLength = input.int(9, "EMA Fast", group=groupTrend)
+emaSlowLength = input.int(20, "EMA Slow", group=groupTrend)
+
+groupVolume = "Volume"
+
+volumeLength = input.int(20, "Volume Average", group=groupVolume)
+
+groupDisplay = "Display"
+
+showEMA = input.bool(true, "Show EMA", group=groupDisplay)
+showVWAP = input.bool(true, "Show VWAP", group=groupDisplay)
+
+//=====================================================
+// EMA ENGINE
+//=====================================================
+emaFast = ta.ema(close, emaFastLength)
+emaSlow = ta.ema(close, emaSlowLength)
+
+trendBull = emaFast > emaSlow
+
+plot(showEMA ? emaFast : na, color=color.lime, linewidth=2, title="EMA Fast")
+plot(showEMA ? emaSlow : na, color=color.orange, linewidth=2, title="EMA Slow")
+
+//=====================================================
+// VWAP ENGINE
+//=====================================================
+vwapLine = ta.vwap(hlc3)
+
+plot(showVWAP ? vwapLine : na,
+     color=color.aqua,
+     linewidth=2,
+     title="VWAP")
+
+aboveVWAP = close > vwapLine
+
+//=====================================================
+// RVOL ENGINE
+//=====================================================
+averageVolume = ta.sma(volume, volumeLength)
+
+rvol =
+    averageVolume > 0
+    ? volume / averageVolume
+    : 0.0
+
+//=====================================================
+// MONEY FLOW ENGINE
+//=====================================================
+typicalPrice = hlc3
+
+moneyFlow = typicalPrice * volume
+
+averageMoneyFlow = ta.sma(moneyFlow, volumeLength)
+
+moneyFlowRatio =
+    averageMoneyFlow > 0
+    ? moneyFlow / averageMoneyFlow
+    : 0.0
+
+//=====================================================
+// PLOT INFO
+//=====================================================
+plot(rvol,
+     title="RVOL",
+     display=display.data_window)
+
+plot(moneyFlowRatio,
+     title="Money Flow Ratio",
+     display=display.data_window)
+
+//=====================================================
+// STATUS
+//=====================================================
+var label info = na
+
+if barstate.islast
+
+    label.delete(info)
+
+    txt =
+         "Trend : " +
+         (trendBull ? "Bullish" : "Bearish") +
+         "\nRVOL : " +
+         str.tostring(rvol,"#.##") +
+         "\nMoney : " +
+         str.tostring(moneyFlowRatio,"#.##")
+
+    info :=
+         label.new(
+             bar_index,
+             high,
+             txt,
+             style=label.style_label_down,
+             color=color.black,
+             textcolor=color.white)
